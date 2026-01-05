@@ -104,8 +104,16 @@ def rank_brand_posts(validated_results: dict) -> dict:
     rankings = {}
     
     for brand, posts in validated_results.items():
+        # Add engagement_score to all posts for the trends chart
+        all_posts_with_scores = []
+        for post in posts:
+            post_copy = post.copy()
+            post_copy['engagement_score'] = calculate_post_score(post)
+            all_posts_with_scores.append(post_copy)
+        
         rankings[brand] = {
             'total_posts': len(posts),
+            'all_posts': all_posts_with_scores,
             'category_distribution': get_category_distribution(posts),
             'top_posts': get_top_scored_posts(posts, n=10),
             'top_posts_by_category': get_top_posts_by_top_categories(posts, n_categories=3, n_posts=3)
