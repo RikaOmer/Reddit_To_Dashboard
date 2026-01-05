@@ -1,29 +1,32 @@
-# Reddit Social Listening Dashboard
+# Social Listening Dashboard
 
 Monitor public sentiment about **Taboola** and **Realize** on Reddit and Hacker News with AI-powered analysis.
 
 ## Features
 
-- Multi-source data ingestion (Reddit + Hacker News)
-- AI sentiment analysis (GPT-4o-mini)
-- Field-level classification (Pricing, Performance, Support, etc.)
-- Visual dashboard with filters and trends
+- **Multi-source ingestion**: Reddit API + Hacker News API
+- **AI sentiment analysis**: GPT-4o-mini with structured JSON output
+- **Field-level classification**: Pricing, Performance, Support, UX, Integration, General
+- **Visual dashboard**: Filter by platform, entity, and topic; view trends over time
+- **Aggregates**: Sentiment distribution, top themes with representative quotes
 
-## Setup
+## Quick Start
 
 ### 1. Install Dependencies
 
 ```bash
+# Backend
 python -m venv venv
 .\venv\Scripts\activate  # Windows
 pip install -r requirements.txt
 
+# Frontend
 cd frontend && npm install
 ```
 
 ### 2. Configure Environment
 
-Create `.env` file:
+Create `.env` file in project root:
 
 ```env
 REDDIT_CLIENT_ID=your_id
@@ -32,18 +35,18 @@ REDDIT_USER_AGENT=SocialListeningAgent/1.0
 OPENAI_API_KEY=your_key
 ```
 
-## Running
+### 3. Run
 
 ```bash
-# Backend (Terminal 1)
+# Terminal 1 - Backend API
 python api.py
 
-# Frontend (Terminal 2)
+# Terminal 2 - Frontend Dashboard
 cd frontend && npm run dev
 ```
 
-- API: http://localhost:8080
-- Dashboard: http://localhost:3000
+- **API**: http://localhost:8080
+- **Dashboard**: http://localhost:3000
 
 ## Testing
 
@@ -51,21 +54,68 @@ cd frontend && npm run dev
 pytest tests/ -v
 ```
 
-## Project Structure
+## Output Files
 
-```
-├── api.py              # FastAPI backend
-├── reddit_ingest.py    # Reddit data fetching
-├── hackernews_ingest.py# HN data fetching
-├── llm_validation.py   # AI sentiment analysis
-├── ranking.py          # Engagement scoring
-├── frontend/           # React dashboard
-└── output/             # Generated JSON files
+| File | Description |
+|------|-------------|
+| `output/items.jsonl` | Individual posts with sentiment analysis |
+| `output/aggregates.json` | Aggregated metrics per entity |
+
+### Sample Item Schema
+
+```json
+{
+  "id": "abc123",
+  "source": "reddit",
+  "brand": "Taboola",
+  "title": "Post title",
+  "validation": {
+    "is_relevant": true,
+    "subject": "Performance",
+    "sentiment": "positive",
+    "sentiment_score": 0.7
+  }
+}
 ```
 
 ## API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/rankings` | Get cached results |
-| POST | `/api/refresh` | Fetch & analyze new data |
+| GET | `/api/rankings` | Get cached results with aggregates |
+| POST | `/api/refresh` | Fetch & analyze fresh data |
+
+## Project Structure
+
+```
+├── api.py               # FastAPI backend server
+├── reddit_ingest.py     # Reddit data fetching (PRAW)
+├── hackernews_ingest.py # Hacker News API integration
+├── llm_validation.py    # OpenAI sentiment analysis
+├── ranking.py           # Engagement scoring algorithm
+├── frontend/            # React + Vite dashboard
+├── output/              # Generated JSON output files
+├── tests/               # Unit tests
+├── DESIGN.md            # Architecture & design decisions
+└── requirements.txt     # Python dependencies
+```
+
+## Design Document
+
+See [DESIGN.md](DESIGN.md) for:
+- Architecture diagram
+- LLM prompt design & schema constraints
+- Entity disambiguation approach
+- Limitations & next steps
+
+## Limitations & Edge Cases
+
+- **Sarcasm**: LLM may misclassify sarcastic posts
+- **Mixed sentiment**: Posts with multiple sentiments use dominant tone
+- **"Realize" disambiguation**: Uses capitalization + context keywords to avoid false positives
+- **Rate limits**: Reddit API has usage limits; cached results reduce API calls
+- **English only**: Analysis optimized for English content
+
+## Compliance
+
+This project only uses publicly available content and respects platform Terms of Service. No private data is accessed or stored.
