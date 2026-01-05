@@ -1,194 +1,82 @@
 def calculate_post_score(post: dict) -> float:
-
-    upvotes = post.get('score', 0) * 1.0
-    comments = post.get('num_comments', 0) * 2.0
-    quality = post.get('upvote_ratio', 0) * 10
-    
-    return upvotes + comments + quality
+    """Calculate engagement score from upvotes, comments, and quality."""
+    return (
+        post.get('score', 0) * 1.0 +
+        post.get('num_comments', 0) * 2.0 +
+        post.get('upvote_ratio', 0) * 10
+    )
 
 
 def get_category_distribution(posts: list) -> dict:
+    """Calculate category distribution with sentiment breakdown."""
     if not posts:
         return {}
     
-    total_posts = len(posts)
-    
-    # Group posts by category
-    category_posts = {}
+    categories = {}
     for post in posts:
-        validation = post.get('validation', {})
-        subject = validation.get('subject', 'N/A')
-        sentiment = validation.get('sentiment', 'neutral').lower()
+        subject = post.get('validation', {}).get('subject', 'N/A')
+        sentiment = post.get('validation', {}).get('sentiment', 'neutral').lower()
         
-        if subject not in category_posts:
-            category_posts[subject] = {
-                'posts': [],
-                'sentiments': {'positive': 0, 'negative': 0, 'neutral': 0, 'mixed': 0}
-            }
+        if subject not in categories:
+            categories[subject] = {'posts': [], 'sentiments': {'positive': 0, 'negative': 0, 'neutral': 0, 'mixed': 0}}
         
-        category_posts[subject]['posts'].append(post)
-        if sentiment in category_posts[subject]['sentiments']:
-            category_posts[subject]['sentiments'][sentiment] += 1
-        else:
-            category_posts[subject]['sentiments']['neutral'] += 1
+        categories[subject]['posts'].append(post)
+        categories[subject]['sentiments'][sentiment] = categories[subject]['sentiments'].get(sentiment, 0) + 1
     
-    # Calculate percentages
+    # Build distribution with percentages
+    total = len(posts)
     distribution = {}
-    for category, data in category_posts.items():
+    for category, data in categories.items():
         count = len(data['posts'])
-        category_percentage = (count / total_posts) * 100 if total_posts > 0 else 0
-        
-        # Calculate sentiment breakdown percentages within this category
-        sentiment_breakdown = {}
-        for sentiment, sentiment_count in data['sentiments'].items():
-            sentiment_breakdown[sentiment] = (sentiment_count / count) * 100 if count > 0 else 0
-        
         distribution[category] = {
-            'percentage': round(category_percentage, 1),
+            'percentage': round((count / total) * 100, 1),
             'count': count,
-            'sentiment_breakdown': {k: round(v, 1) for k, v in sentiment_breakdown.items()}
+            'sentiment_breakdown': {k: round((v / count) * 100, 1) for k, v in data['sentiments'].items()}
         }
     
-    # Sort by percentage descending
-    distribution = dict(sorted(distribution.items(), key=lambda x: x[1]['percentage'], reverse=True))
-    
-    return distribution
+    return dict(sorted(distribution.items(), key=lambda x: x[1]['percentage'], reverse=True))
 
 
 def get_top_scored_posts(posts: list, n: int = 10) -> list:
-
-    # Return top N posts sorted by calculated engagement score (descending).
+    """Return top N posts sorted by engagement score."""
     if not posts:
         return []
     
-
-    scored_posts = []
-    for post in posts:
-        post_copy = post.copy()
-        post_copy['engagement_score'] = calculate_post_score(post)
-        scored_posts.append(post_copy)
-    
-    scored_posts.sort(key=lambda x: x['engagement_score'], reverse=True)
-    
-    return scored_posts[:n]
+    scored = [{**p, 'engagement_score': calculate_post_score(p)} for p in posts]
+    return sorted(scored, key=lambda x: x['engagement_score'], reverse=True)[:n]
 
 
-def get_top_posts_by_top_categories(posts: list, n_categories: int = 3, n_posts: int = 3) -> dict:
-    # Get top posts from the top N categories by percentage.
+def get_top_posts_by_category(posts: list, n_categories: int = 3, n_posts: int = 3) -> dict:
+    """Get top posts from the top N categories."""
     if not posts:
         return {}
     
     distribution = get_category_distribution(posts)
     top_categories = list(distribution.keys())[:n_categories]
-
-    posts_by_category = {}
+    
+    posts_by_cat = {}
     for post in posts:
-        validation = post.get('validation', {})
-        subject = validation.get('subject', 'N/A')
-        
-        if subject not in posts_by_category:
-            posts_by_category[subject] = []
-        posts_by_category[subject].append(post)
+        subject = post.get('validation', {}).get('subject', 'N/A')
+        if subject not in posts_by_cat:
+            posts_by_cat[subject] = []
+        posts_by_cat[subject].append(post)
     
-    result = {}
-    for category in top_categories:
-        if category in posts_by_category:
-            category_posts = posts_by_category[category]
-            result[category] = get_top_scored_posts(category_posts, n_posts)
-    
-    return result
+    return {cat: get_top_scored_posts(posts_by_cat.get(cat, []), n_posts) for cat in top_categories if cat in posts_by_cat}
 
 
 def rank_brand_posts(validated_results: dict) -> dict:
-# Main orchestration function that processes validated results for each brand.
+    """Main function: process validated results and generate rankings."""
     rankings = {}
     
     for brand, posts in validated_results.items():
-        # Add engagement_score to all posts for the trends chart
-        all_posts_with_scores = []
-        for post in posts:
-            post_copy = post.copy()
-            post_copy['engagement_score'] = calculate_post_score(post)
-            all_posts_with_scores.append(post_copy)
+        all_posts = [{**p, 'engagement_score': calculate_post_score(p)} for p in posts]
         
         rankings[brand] = {
             'total_posts': len(posts),
-            'all_posts': all_posts_with_scores,
+            'all_posts': all_posts,
             'category_distribution': get_category_distribution(posts),
             'top_posts': get_top_scored_posts(posts, n=10),
-            'top_posts_by_category': get_top_posts_by_top_categories(posts, n_categories=3, n_posts=3)
+            'top_posts_by_category': get_top_posts_by_category(posts)
         }
     
     return rankings
-
-
-def print_ranking_report(rankings: dict):
-# Print a formatted report of the ranking results.
-    for brand, data in rankings.items():
-        print(f"\n{'='*80}")
-        print(f"  {brand.upper()} RANKING REPORT")
-        print(f"{'='*80}")
-        print(f"Total Validated Posts: {data['total_posts']}")
-        
-        print(f"\n{'─'*40}")
-        print("CATEGORY DISTRIBUTION")
-        print(f"{'─'*40}")
-        
-        for category, stats in data['category_distribution'].items():
-            print(f"\n  {category}:")
-            print(f"    Posts: {stats['count']} ({stats['percentage']}% of total)")
-            print(f"    Sentiment Breakdown:")
-            sb = stats['sentiment_breakdown']
-            print(f"      Positive: {sb.get('positive', 0)}%")
-            print(f"      Negative: {sb.get('negative', 0)}%")
-            print(f"      Neutral:  {sb.get('neutral', 0)}%")
-            print(f"      Mixed:    {sb.get('mixed', 0)}%")
-        
-        print(f"\n{'─'*40}")
-        print("TOP SCORED POSTS (Overall)")
-        print(f"{'─'*40}")
-        
-        for i, post in enumerate(data['top_posts'][:5], 1):
-            title = post.get('title', 'No title')[:60]
-            score = post.get('engagement_score', 0)
-            sentiment = post.get('validation', {}).get('sentiment', 'N/A')
-            subject = post.get('validation', {}).get('subject', 'N/A')
-            link = post.get('permalink', 'No link')
-            print(f"\n  [{i}] Score: {score:.1f}")
-            print(f"      Title: {title}...")
-            print(f"      Category: {subject} | Sentiment: {sentiment}")
-            print(f"      Link: {link}")
-        
-        print(f"\n{'─'*40}")
-        print("TOP 3 POSTS FROM TOP 3 CATEGORIES")
-        print(f"{'─'*40}")
-        
-        for category, cat_posts in data['top_posts_by_category'].items():
-            print(f"\n  [{category}]")
-            for j, post in enumerate(cat_posts, 1):
-                title = post.get('title', 'No title')[:50]
-                score = post.get('engagement_score', 0)
-                sentiment = post.get('validation', {}).get('sentiment', 'N/A')
-                link = post.get('permalink', 'No link')
-                print(f"    {j}. [{score:.1f}] {title}... ({sentiment})")
-                print(f"       Link: {link}")
-
-
-if __name__ == "__main__":
-    # Example usage with the full pipeline
-    from redit_ingest import fetch_brand_mentions
-    from llm_validation import get_only_relevant_posts
-    
-    print("Fetching Reddit posts...")
-    brands = ["Taboola", "Realize"]
-    reddit_results = fetch_brand_mentions(brands, limit=30)
-    
-    print("\nValidating posts with OpenAI...")
-    relevant_posts = get_only_relevant_posts(reddit_results)
-    
-    print("\nGenerating rankings...")
-    rankings = rank_brand_posts(relevant_posts)
-    
-    # Print the report
-    print_ranking_report(rankings)
-

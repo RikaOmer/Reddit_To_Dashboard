@@ -7,10 +7,13 @@ const CATEGORY_COLORS = {
   'Support': '#3b82f6',
   'Features': '#8b5cf6',
   'Integration': '#ec4899',
+  'Career & Jobs': '#6366f1',
   'User Experience': '#06b6d4',
-  'General Discussion': '#6b7280',
+  'Campaign Strategy': '#84cc16',
+  'Company News': '#14b8a6',
   'Complaints': '#ef4444',
   'Recommendations': '#22c55e',
+  'Other': '#6b7280',
 }
 
 const ALL_TOPICS = [
@@ -20,11 +23,54 @@ const ALL_TOPICS = [
   'Support',
   'Features',
   'Integration',
+  'Career & Jobs',
   'User Experience',
-  'General Discussion',
+  'Campaign Strategy',
+  'Company News',
   'Complaints',
-  'Recommendations'
+  'Recommendations',
+  'Other'
 ]
+
+const ALL_PLATFORMS = [
+  'All Platforms',
+  'reddit',
+  'hackernews'
+]
+
+// Helper function to calculate category distribution from posts
+function calculateCategoryDistribution(posts) {
+  if (!posts.length) return {}
+  
+  const categories = {}
+  for (const post of posts) {
+    const subject = post.validation?.subject || 'Other'
+    const sentiment = (post.validation?.sentiment || 'neutral').toLowerCase()
+    
+    if (!categories[subject]) {
+      categories[subject] = { count: 0, sentiments: { positive: 0, negative: 0, neutral: 0, mixed: 0 } }
+    }
+    categories[subject].count++
+    categories[subject].sentiments[sentiment] = (categories[subject].sentiments[sentiment] || 0) + 1
+  }
+  
+  const distribution = {}
+  for (const [category, data] of Object.entries(categories)) {
+    const percentage = (data.count / posts.length) * 100
+    const sentimentBreakdown = {}
+    for (const [sent, count] of Object.entries(data.sentiments)) {
+      sentimentBreakdown[sent] = data.count > 0 ? Math.round((count / data.count) * 1000) / 10 : 0
+    }
+    distribution[category] = {
+      count: data.count,
+      percentage: Math.round(percentage * 10) / 10,
+      sentiment_breakdown: sentimentBreakdown
+    }
+  }
+  
+  // Sort by percentage descending
+  return Object.fromEntries(Object.entries(distribution).sort((a, b) => b[1].percentage - a[1].percentage))
+}
 
 function App() {
   const [data, setData] = useState(null)
@@ -35,6 +81,7 @@ function App() {
   // Filter states
   const [selectedEntity, setSelectedEntity] = useState('All')
   const [selectedTopic, setSelectedTopic] = useState('All Topics')
+  const [selectedPlatform, setSelectedPlatform] = useState('All Platforms')
 
   const API_BASE = 'http://localhost:8080'
 
@@ -102,7 +149,7 @@ function App() {
     return ['All', ...Object.keys(data)]
   }, [data])
 
-  // Get filtered data based on selected entity and topic
+  // Get filtered data based on selected entity, topic, and platform
   const filteredData = useMemo(() => {
     if (!data) return null
     
@@ -115,31 +162,45 @@ function App() {
       result = { [selectedEntity]: data[selectedEntity] }
     }
     
-    // Filter by topic within each brand
-    if (selectedTopic !== 'All Topics') {
+    // Filter by topic and/or platform within each brand
+    const needsFiltering = selectedTopic !== 'All Topics' || selectedPlatform !== 'All Platforms'
+    
+    if (needsFiltering) {
       const filtered = {}
       for (const [brand, brandData] of Object.entries(result)) {
         const filteredAllPosts = (brandData.all_posts || []).filter(post => {
-          const subject = post.validation?.subject || 'General Discussion'
-          return subject === selectedTopic
+          const subject = post.validation?.subject || 'Other'
+          const source = post.source || 'reddit'
+          
+          const matchesTopic = selectedTopic === 'All Topics' || subject === selectedTopic
+          const matchesPlatform = selectedPlatform === 'All Platforms' || source === selectedPlatform
+          
+          return matchesTopic && matchesPlatform
         })
         const filteredTopPosts = brandData.top_posts.filter(post => {
-          const subject = post.validation?.subject || 'General Discussion'
-          return subject === selectedTopic
+          const subject = post.validation?.subject || 'Other'
+          const source = post.source || 'reddit'
+          
+          const matchesTopic = selectedTopic === 'All Topics' || subject === selectedTopic
+          const matchesPlatform = selectedPlatform === 'All Platforms' || source === selectedPlatform
+          
+          return matchesTopic && matchesPlatform
         })
         
         filtered[brand] = {
           ...brandData,
           all_posts: filteredAllPosts,
           top_posts: filteredTopPosts,
-          total_posts: filteredAllPosts.length
+          total_posts: filteredAllPosts.length,
+          // Recalculate category distribution from filtered posts
+          category_distribution: calculateCategoryDistribution(filteredAllPosts)
         }
       }
       result = filtered
     }
     
     return result
-  }, [data, selectedEntity, selectedTopic])
+  }, [data, selectedEntity, selectedTopic, selectedPlatform])
 
   // Get all posts for trends chart (use all_posts to show all 30 posts)
   const allPosts = useMemo(() => {
@@ -229,6 +290,22 @@ function App() {
                 >
                   {brands.map(brand => (
                     <option key={brand} value={brand}>{brand}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="filter-group">
+                <label>Platform</label>
+                <select 
+                  value={selectedPlatform} 
+                  onChange={(e) => setSelectedPlatform(e.target.value)}
+                  className="filter-select"
+                >
+                  {ALL_PLATFORMS.map(platform => (
+                    <option key={platform} value={platform}>
+                      {platform === 'reddit' ? '🔴 Reddit' : 
+                       platform === 'hackernews' ? '🟠 Hacker News' : 
+                       platform}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -545,6 +622,8 @@ function PostCard({ post, rank, getCategoryColor }) {
   const sentiment = (validation.sentiment || 'neutral').toLowerCase()
   const subject = validation.subject || 'General'
   const score = post.engagement_score?.toFixed(1) || '0'
+  const source = post.source || 'reddit'
+  const isHackerNews = source === 'hackernews'
 
   return (
     <div className="post-card">
@@ -558,6 +637,9 @@ function PostCard({ post, rank, getCategoryColor }) {
         </span>
       </div>
       <div className="post-meta">
+        <span className={`post-tag platform ${source}`}>
+          {isHackerNews ? '🟠 HN' : '🔴 Reddit'}
+        </span>
         <span className="post-tag category" style={{ backgroundColor: `${getCategoryColor(subject)}15`, color: getCategoryColor(subject) }}>
           {subject}
         </span>
@@ -571,7 +653,7 @@ function PostCard({ post, rank, getCategoryColor }) {
             rel="noopener noreferrer"
             className="post-link"
           >
-            View on Reddit →
+            {isHackerNews ? 'View on HN →' : 'View on Reddit →'}
           </a>
         )}
       </div>
