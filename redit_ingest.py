@@ -109,7 +109,8 @@ def _search_subreddit(subreddit, brand, sort_by, limit, results, seen_ids, requi
 
 def is_relevant_post(post, brand, context_keywords, require_capitalized=True):
     """Check if the post is relevant to the brand."""
-    full_text = f"{post.title} {post.selftext}".lower()
+    original_text = f"{post.title} {post.selftext}"
+    full_text = original_text.lower()
     
     if brand.lower() not in full_text:
         return False
@@ -118,16 +119,14 @@ def is_relevant_post(post, brand, context_keywords, require_capitalized=True):
         has_context = any(kw in full_text for kw in context_keywords)
         if require_capitalized:
             # Phase 1: Must have capitalized "Realize" + context keyword
-            has_realize = re.search(r'\bRealize\b', f"{post.title} {post.selftext}")
+            has_realize = re.search(r'\bRealize\b', original_text)
         else:
             # Phase 2: Allow lowercase "realize" + context keyword
-            has_realize = re.search(r'\brealize\b', f"{post.title} {post.selftext}")
+            has_realize = re.search(r'\brealize\b', original_text, re.IGNORECASE)
         return has_realize and has_context
     
-    elif brand == "Taboola":
-        return "taboola" in full_text
-    
-    return False
+    # For other brands (e.g., Taboola), presence check already done above
+    return True
 
 
 def extract_post_data(post, sort_by):
