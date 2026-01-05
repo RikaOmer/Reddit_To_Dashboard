@@ -27,7 +27,7 @@ def get_reddit_client():
             client_secret=os.getenv("REDDIT_SECRET_KEY"),
             user_agent=os.getenv("REDDIT_USER_AGENT")
         )
-        print(f"✅ Connected to Reddit (Read Only: {reddit.read_only})")
+        print(f"✅ Connected to Reddit)")
         return reddit
     except Exception as e:
         print(f"❌ Error connecting to Reddit: {e}")
@@ -35,13 +35,11 @@ def get_reddit_client():
 
 
 def fetch_brand_mentions(brand_names, limit_per_type=10):
-    """Fetch brand mentions from Reddit."""
     reddit = get_reddit_client()
     if not reddit:
         return {}
 
     results = {brand: [] for brand in brand_names}
-    seen_ids = set()
 
     for brand in brand_names:
         print(f"🔍 Processing Brand: {brand}...")
@@ -50,14 +48,14 @@ def fetch_brand_mentions(brand_names, limit_per_type=10):
             try:
                 subreddit = reddit.subreddit(subreddit_name)
                 for sort_by in SORT_TYPES:
-                    _search_subreddit(subreddit, brand, sort_by, limit_per_type, results, seen_ids)
+                    _search_subreddit(subreddit, brand, sort_by, limit_per_type, results)
             except Exception as e:
                 print(f"Error accessing subreddit {subreddit_name}: {e}")
     
     return results
 
 
-def _search_subreddit(subreddit, brand, sort_by, limit_per_type, results, seen_ids):
+def _search_subreddit(subreddit, brand, sort_by, limit_per_type, results):
     """Search a single subreddit for brand mentions."""
     try:
         search_results = subreddit.search(
@@ -70,12 +68,9 @@ def _search_subreddit(subreddit, brand, sort_by, limit_per_type, results, seen_i
         for post in search_results:
             if len(results[brand]) >= limit_per_type * len(SORT_TYPES):
                 break
-            if post.id in seen_ids:
-                continue
             
             context_keywords = REALIZE_CONTEXT_KEYWORDS if brand == "Realize" else []
             if is_relevant_post(post, brand, context_keywords):
-                seen_ids.add(post.id)
                 results[brand].append(extract_post_data(post, sort_by))
     except Exception as e:
         print(f"Error searching {subreddit} ({sort_by}): {e}")
@@ -134,3 +129,4 @@ if __name__ == "__main__":
             print(f"[{p['ingest_type'].upper()}] r/{p['subreddit']} | {p['date']} | Score: {p['score']}")
             print(f"Title: {p['title'][:60]}...")
             print("-" * 40)
+            
