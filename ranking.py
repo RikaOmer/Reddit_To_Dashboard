@@ -1,26 +1,5 @@
-"""
-Ranking module for Reddit brand monitoring.
-Provides functions to score, categorize, and rank validated posts.
-"""
-
-from typing import Dict, List
-
-
 def calculate_post_score(post: dict) -> float:
-    """
-    Calculate engagement score for a single post.
-    
-    Formula:
-        post['score'] * 1.0 +           # Upvotes matter
-        post['num_comments'] * 2.0 +    # Comments = higher engagement
-        post['upvote_ratio'] * 10       # Quality signal
-    
-    Args:
-        post: Dictionary containing post data with score, num_comments, upvote_ratio
-    
-    Returns:
-        Calculated engagement score as float
-    """
+
     upvotes = post.get('score', 0) * 1.0
     comments = post.get('num_comments', 0) * 2.0
     quality = post.get('upvote_ratio', 0) * 10
@@ -29,27 +8,6 @@ def calculate_post_score(post: dict) -> float:
 
 
 def get_category_distribution(posts: list) -> dict:
-    """
-    For each subject category, return percentage of posts and sentiment breakdown.
-    
-    Args:
-        posts: List of validated posts with 'validation' containing 'subject' and 'sentiment'
-    
-    Returns:
-        Dictionary with category stats:
-        {
-            "Performance": {
-                "percentage": 25.0,
-                "count": 5,
-                "sentiment_breakdown": {
-                    "positive": 60.0,
-                    "negative": 20.0,
-                    "neutral": 20.0,
-                    "mixed": 0.0
-                }
-            }
-        }
-    """
     if not posts:
         return {}
     
@@ -98,58 +56,31 @@ def get_category_distribution(posts: list) -> dict:
 
 
 def get_top_scored_posts(posts: list, n: int = 10) -> list:
-    """
-    Return top N posts sorted by calculated engagement score (descending).
-    
-    Args:
-        posts: List of validated posts
-        n: Number of top posts to return (default 10)
-    
-    Returns:
-        List of top N posts with 'engagement_score' added to each
-    """
+
+    # Return top N posts sorted by calculated engagement score (descending).
     if not posts:
         return []
     
-    # Add engagement score to each post
+
     scored_posts = []
     for post in posts:
         post_copy = post.copy()
         post_copy['engagement_score'] = calculate_post_score(post)
         scored_posts.append(post_copy)
     
-    # Sort by engagement score descending
     scored_posts.sort(key=lambda x: x['engagement_score'], reverse=True)
     
     return scored_posts[:n]
 
 
 def get_top_posts_by_top_categories(posts: list, n_categories: int = 3, n_posts: int = 3) -> dict:
-    """
-    Get top posts from the top N categories by percentage.
-    
-    Args:
-        posts: List of validated posts
-        n_categories: Number of top categories to consider (default 3)
-        n_posts: Number of top posts per category (default 3)
-    
-    Returns:
-        Dictionary mapping top categories to their top posts:
-        {
-            "Performance": [post1, post2, post3],
-            "Pricing": [post1, post2, post3]
-        }
-    """
+    # Get top posts from the top N categories by percentage.
     if not posts:
         return {}
     
-    # Get category distribution to find top categories
     distribution = get_category_distribution(posts)
-    
-    # Get top N categories by percentage (already sorted)
     top_categories = list(distribution.keys())[:n_categories]
-    
-    # Group posts by category
+
     posts_by_category = {}
     for post in posts:
         validation = post.get('validation', {})
@@ -159,7 +90,6 @@ def get_top_posts_by_top_categories(posts: list, n_categories: int = 3, n_posts:
             posts_by_category[subject] = []
         posts_by_category[subject].append(post)
     
-    # Get top posts for each top category
     result = {}
     for category in top_categories:
         if category in posts_by_category:
@@ -170,27 +100,7 @@ def get_top_posts_by_top_categories(posts: list, n_categories: int = 3, n_posts:
 
 
 def rank_brand_posts(validated_results: dict) -> dict:
-    """
-    Main orchestration function that processes validated results for each brand.
-    
-    Args:
-        validated_results: Dictionary from get_only_relevant_posts()
-            {
-                "Taboola": [list of validated posts],
-                "Realize": [list of validated posts]
-            }
-    
-    Returns:
-        Comprehensive ranking data per brand:
-        {
-            "Taboola": {
-                "total_posts": 20,
-                "category_distribution": {...},
-                "top_posts": [...],
-                "top_posts_by_category": {...}
-            }
-        }
-    """
+# Main orchestration function that processes validated results for each brand.
     rankings = {}
     
     for brand, posts in validated_results.items():
@@ -205,19 +115,13 @@ def rank_brand_posts(validated_results: dict) -> dict:
 
 
 def print_ranking_report(rankings: dict):
-    """
-    Print a formatted report of the ranking results.
-    
-    Args:
-        rankings: Output from rank_brand_posts()
-    """
+# Print a formatted report of the ranking results.
     for brand, data in rankings.items():
         print(f"\n{'='*80}")
         print(f"  {brand.upper()} RANKING REPORT")
         print(f"{'='*80}")
         print(f"Total Validated Posts: {data['total_posts']}")
         
-        # Category Distribution
         print(f"\n{'─'*40}")
         print("CATEGORY DISTRIBUTION")
         print(f"{'─'*40}")
@@ -232,7 +136,6 @@ def print_ranking_report(rankings: dict):
             print(f"      Neutral:  {sb.get('neutral', 0)}%")
             print(f"      Mixed:    {sb.get('mixed', 0)}%")
         
-        # Top Scored Posts Overall
         print(f"\n{'─'*40}")
         print("TOP SCORED POSTS (Overall)")
         print(f"{'─'*40}")
@@ -248,7 +151,6 @@ def print_ranking_report(rankings: dict):
             print(f"      Category: {subject} | Sentiment: {sentiment}")
             print(f"      Link: {link}")
         
-        # Top Posts by Top Categories
         print(f"\n{'─'*40}")
         print("TOP 3 POSTS FROM TOP 3 CATEGORIES")
         print(f"{'─'*40}")

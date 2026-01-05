@@ -72,13 +72,9 @@ Respond in this exact JSON format:
 {{
     "is_relevant": true/false,
     "confidence": 0.0-1.0,
-    "reasoning": "Brief explanation of your decision",
-    "detected_context": "What the post is actually about",
     "subject": "Main subject category (from the list above, or 'N/A' if not relevant)",
-    "subject_details": "Brief description of specific topic within the subject",
-    "sentiment": "positive/negative/neutral/mixed",
-    "sentiment_score": -1.0 to 1.0 (where -1 is very negative, 0 is neutral, 1 is very positive),
-    "sentiment_reasoning": "Brief explanation of why this sentiment was determined"
+    "sentiment": "positive/negative/neutral",
+    "sentiment_score": -1.0 to 1.0 (where -1 is very negative, 0 is neutral, 1 is very positive)
 }}
 """
 
@@ -113,26 +109,14 @@ Respond in this exact JSON format:
             "brand": brand,
             "is_relevant": None,
             "confidence": 0.0,
-            "reasoning": f"Error during validation: {str(e)}",
-            "detected_context": "Error",
             "subject": "N/A",
-            "subject_details": "N/A",
             "sentiment": "neutral",
-            "sentiment_score": 0.0,
-            "sentiment_reasoning": "Error during analysis"
+            "sentiment_score": 0.0
         }
 
 
 def validate_all_posts(results: dict) -> dict:
-    """
-    Validate all posts from the Reddit ingestion results.
-    
-    Args:
-        results: Dictionary with brand names as keys and lists of posts as values
-    
-    Returns:
-        Dictionary with validation results for each brand
-    """
+# Validate all posts from the Reddit ingestion results.
     validated_results = {}
     
     for brand, posts in results.items():
@@ -162,7 +146,6 @@ def validate_all_posts(results: dict) -> dict:
                     "validation": validation
                 })
         
-        # Print summary for this brand
         relevant_count = len(validated_results[brand]["relevant_posts"])
         irrelevant_count = len(validated_results[brand]["irrelevant_posts"])
         error_count = len(validated_results[brand]["errors"])
@@ -176,18 +159,17 @@ def validate_all_posts(results: dict) -> dict:
 
 
 def get_sentiment_emoji(sentiment: str) -> str:
-    """Get emoji for sentiment."""
+# Get emoji for sentiment.
     emoji_map = {
         "positive": "😊",
         "negative": "😞",
-        "neutral": "😐",
-        "mixed": "🤔"
+        "neutral": "😐"
     }
     return emoji_map.get(sentiment.lower(), "❓")
 
 
 def print_detailed_results(validated_results: dict):
-    """Print detailed validation results with subject and sentiment."""
+# Print detailed validation results with subject and sentiment.
     for brand, data in validated_results.items():
         print(f"\n{'='*80}")
         print(f"📊 {brand} - Relevant Posts ({len(data['relevant_posts'])} found)")
@@ -203,7 +185,6 @@ def print_detailed_results(validated_results: dict):
             print(f"      🎯 Relevance Confidence: {confidence:.0%}")
             print(f"      {sentiment_emoji} Sentiment: {v.get('sentiment', 'N/A').upper()} (score: {v.get('sentiment_score', 0):.2f})")
         
-        # Print subject distribution for relevant posts
         if data['relevant_posts']:
             print(f"\n  {'-'*40}")
             print(f"  📂 SUBJECT DISTRIBUTION:")
@@ -214,10 +195,9 @@ def print_detailed_results(validated_results: dict):
             for subject, count in sorted(subject_counts.items(), key=lambda x: -x[1]):
                 print(f"       {subject}: {count}")
         
-        # Print sentiment distribution for relevant posts
         if data['relevant_posts']:
             print(f"\n  😊 SENTIMENT DISTRIBUTION:")
-            sentiment_counts = {"positive": 0, "negative": 0, "neutral": 0, "mixed": 0}
+            sentiment_counts = {"positive": 0, "negative": 0, "neutral": 0}
             total_score = 0
             for post in data['relevant_posts']:
                 sentiment = post['validation'].get('sentiment', 'neutral').lower()
@@ -234,15 +214,7 @@ def print_detailed_results(validated_results: dict):
 
 
 def get_only_relevant_posts(results: dict) -> dict:
-    """
-    Filter and return only the posts validated as relevant to the companies.
-    
-    Args:
-        results: Raw results from fetch_brand_mentions()
-    
-    Returns:
-        Dictionary with only validated relevant posts
-    """
+# Filter and return only the posts validated as relevant to the companies.
     validated = validate_all_posts(results)
     
     return {
