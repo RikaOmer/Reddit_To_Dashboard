@@ -40,6 +40,7 @@ def fetch_brand_mentions(brand_names, limit=30):
         return {}
 
     results = {brand: [] for brand in brand_names}
+    seen_ids = set()
 
     for brand in brand_names:
         print(f"🔍 Processing Brand: {brand}...")
@@ -48,14 +49,14 @@ def fetch_brand_mentions(brand_names, limit=30):
             try:
                 subreddit = reddit.subreddit(subreddit_name)
                 for sort_by in SORT_TYPES:
-                    _search_subreddit(subreddit, brand, sort_by, limit, results)
+                    _search_subreddit(subreddit, brand, sort_by, limit, results, seen_ids)
             except Exception as e:
                 print(f"Error accessing subreddit {subreddit_name}: {e}")
     
     return results
 
 
-def _search_subreddit(subreddit, brand, sort_by, limit, results):
+def _search_subreddit(subreddit, brand, sort_by, limit, results, seen_ids):
     """Search a single subreddit for brand mentions."""
     try:
         search_results = subreddit.search(
@@ -68,9 +69,12 @@ def _search_subreddit(subreddit, brand, sort_by, limit, results):
         for post in search_results:
             if len(results[brand]) >= limit:
                 break
+            if post.id in seen_ids:
+                continue
             
             context_keywords = REALIZE_CONTEXT_KEYWORDS if brand == "Realize" else []
             if is_relevant_post(post, brand, context_keywords):
+                seen_ids.add(post.id)
                 results[brand].append(extract_post_data(post, sort_by))
     except Exception as e:
         print(f"Error searching {subreddit} ({sort_by}): {e}")
@@ -85,7 +89,7 @@ def is_relevant_post(post, brand, context_keywords):
     
     if brand == "Realize":
         # Must have capitalized "Realize" + context keyword
-        has_capitalized = re.search(r'\bRealize\b', f"{post.title} {post.selftext}")
+        has_capitalized = re.search(r'\bRealize\b', f"{post.title} {post.selftext}") or re.search(r'\brealize\b', f"{post.title} {post.selftext}")
         has_context = any(kw in full_text for kw in context_keywords)
         return has_capitalized and has_context
     
