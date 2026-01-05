@@ -43,7 +43,7 @@ cd frontend && npm run dev
 ```
 
 - API: http://localhost:8080
-- Dashboard: http://localhost:5173
+- Dashboard: http://localhost:3000
 
 ## Testing
 
