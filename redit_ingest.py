@@ -34,7 +34,7 @@ def get_reddit_client():
         return None
 
 
-def fetch_brand_mentions(brand_names, limit_per_type=10):
+def fetch_brand_mentions(brand_names, limit=30):
     reddit = get_reddit_client()
     if not reddit:
         return {}
@@ -48,25 +48,25 @@ def fetch_brand_mentions(brand_names, limit_per_type=10):
             try:
                 subreddit = reddit.subreddit(subreddit_name)
                 for sort_by in SORT_TYPES:
-                    _search_subreddit(subreddit, brand, sort_by, limit_per_type, results)
+                    _search_subreddit(subreddit, brand, sort_by, limit, results)
             except Exception as e:
                 print(f"Error accessing subreddit {subreddit_name}: {e}")
     
     return results
 
 
-def _search_subreddit(subreddit, brand, sort_by, limit_per_type, results):
+def _search_subreddit(subreddit, brand, sort_by, limit, results):
     """Search a single subreddit for brand mentions."""
     try:
         search_results = subreddit.search(
             f'"{brand}"', 
             sort=sort_by, 
-            limit=limit_per_type,
+            limit=limit,
             time_filter='all'
         )
         
         for post in search_results:
-            if len(results[brand]) >= limit_per_type * len(SORT_TYPES):
+            if len(results[brand]) >= limit:
                 break
             
             context_keywords = REALIZE_CONTEXT_KEYWORDS if brand == "Realize" else []
@@ -119,7 +119,7 @@ def extract_post_data(post, sort_by):
 
 if __name__ == "__main__":
     brands = ["Taboola", "Realize"]
-    split_results = fetch_brand_mentions(brands, limit_per_type=15)
+    split_results = fetch_brand_mentions(brands, limit=30)
     
     for brand, posts in split_results.items():
         print(f"\n{'='*20} {brand} ({len(posts)} posts) {'='*20}")
