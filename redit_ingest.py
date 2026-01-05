@@ -2,8 +2,7 @@ import praw
 import os
 import re
 from dotenv import load_dotenv
-
-from extractor import extract_post_data
+from datetime import datetime
 
 load_dotenv()
 
@@ -99,6 +98,28 @@ def is_relevant_post(post, brand, context_keywords):
         return "taboola" in full_text
     
     return False
+
+
+def extract_post_data(post, sort_by):
+    """Extract structured data from a Reddit post."""
+    dt_object = datetime.fromtimestamp(post.created_utc)
+    return {
+        "source": "reddit",
+        "ingest_type": sort_by,
+        "id": post.id,
+        "text": f"{post.title} {post.selftext}",
+        "title": post.title,
+        "selftext": post.selftext,
+        "url": post.url,
+        "permalink": f"https://reddit.com{post.permalink}",
+        "created_utc": dt_object.isoformat(),
+        "date": dt_object.strftime('%Y-%m-%d %H:%M:%S'),
+        "author": str(post.author) if post.author else "[deleted]",
+        "score": post.score,
+        "num_comments": post.num_comments,
+        "subreddit": str(post.subreddit),
+        "upvote_ratio": post.upvote_ratio
+    }
 
 
 if __name__ == "__main__":
