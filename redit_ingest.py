@@ -45,18 +45,45 @@ def fetch_brand_mentions(brand_names, limit=30):
     for brand in brand_names:
         print(f"🔍 Processing Brand: {brand}...")
         
-        for subreddit_name in RELEVANT_SUBREDDITS:
-            try:
-                subreddit = reddit.subreddit(subreddit_name)
-                for sort_by in SORT_TYPES:
-                    _search_subreddit(subreddit, brand, sort_by, limit, results, seen_ids)
-            except Exception as e:
-                print(f"Error accessing subreddit {subreddit_name}: {e}")
+        # For Realize, do two-phase search: first capitalized, then lowercase
+        if brand == "Realize":
+            # Phase 1: Search for capitalized "Realize"
+            print(f"🔍 Phase 1: Searching for capitalized 'Realize'...")
+            for subreddit_name in RELEVANT_SUBREDDITS:
+                if len(results[brand]) >= limit:
+                    break
+                try:
+                    subreddit = reddit.subreddit(subreddit_name)
+                    for sort_by in SORT_TYPES:
+                        _search_subreddit(subreddit, brand, sort_by, limit, results, seen_ids, require_capitalized=True)
+                except Exception as e:
+                    print(f"Error accessing subreddit {subreddit_name}: {e}")
+            
+            # Phase 2: If limit not reached, search for lowercase "realize"
+            if len(results[brand]) < limit:
+                print(f"🔍 Phase 2: Searching for lowercase 'realize' (found {len(results[brand])}/{limit} so far)...")
+                for subreddit_name in RELEVANT_SUBREDDITS:
+                    if len(results[brand]) >= limit:
+                        break
+                    try:
+                        subreddit = reddit.subreddit(subreddit_name)
+                        for sort_by in SORT_TYPES:
+                            _search_subreddit(subreddit, brand, sort_by, limit, results, seen_ids, require_capitalized=False)
+                    except Exception as e:
+                        print(f"Error accessing subreddit {subreddit_name}: {e}")
+        else:
+            for subreddit_name in RELEVANT_SUBREDDITS:
+                try:
+                    subreddit = reddit.subreddit(subreddit_name)
+                    for sort_by in SORT_TYPES:
+                        _search_subreddit(subreddit, brand, sort_by, limit, results, seen_ids)
+                except Exception as e:
+                    print(f"Error accessing subreddit {subreddit_name}: {e}")
     
     return results
 
 
-def _search_subreddit(subreddit, brand, sort_by, limit, results, seen_ids):
+def _search_subreddit(subreddit, brand, sort_by, limit, results, seen_ids, require_capitalized=True):
     """Search a single subreddit for brand mentions."""
     try:
         search_results = subreddit.search(
@@ -73,14 +100,14 @@ def _search_subreddit(subreddit, brand, sort_by, limit, results, seen_ids):
                 continue
             
             context_keywords = REALIZE_CONTEXT_KEYWORDS if brand == "Realize" else []
-            if is_relevant_post(post, brand, context_keywords):
+            if is_relevant_post(post, brand, context_keywords, require_capitalized):
                 seen_ids.add(post.id)
                 results[brand].append(extract_post_data(post, sort_by))
     except Exception as e:
         print(f"Error searching {subreddit} ({sort_by}): {e}")
 
 
-def is_relevant_post(post, brand, context_keywords):
+def is_relevant_post(post, brand, context_keywords, require_capitalized=True):
     """Check if the post is relevant to the brand."""
     full_text = f"{post.title} {post.selftext}".lower()
     
@@ -88,10 +115,14 @@ def is_relevant_post(post, brand, context_keywords):
         return False
     
     if brand == "Realize":
-        # Must have capitalized "Realize" + context keyword
-        has_capitalized = re.search(r'\bRealize\b', f"{post.title} {post.selftext}") or re.search(r'\brealize\b', f"{post.title} {post.selftext}")
         has_context = any(kw in full_text for kw in context_keywords)
-        return has_capitalized and has_context
+        if require_capitalized:
+            # Phase 1: Must have capitalized "Realize" + context keyword
+            has_realize = re.search(r'\bRealize\b', f"{post.title} {post.selftext}")
+        else:
+            # Phase 2: Allow lowercase "realize" + context keyword
+            has_realize = re.search(r'\brealize\b', f"{post.title} {post.selftext}")
+        return has_realize and has_context
     
     elif brand == "Taboola":
         return "taboola" in full_text
