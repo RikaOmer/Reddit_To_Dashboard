@@ -12,19 +12,39 @@ Monitor public sentiment about **Taboola** and **Realize** on Reddit and Hacker 
 
 ## Quick Start
 
-### 1. Install Dependencies
+### 1. Clone the Repository
 
 ```bash
-# Backend
-python -m venv venv
-.\venv\Scripts\activate  # Windows
-pip install -r requirements.txt
-
-# Frontend
-cd frontend && npm install
+git clone https://github.com/RikaOmer/Reddit_To_Dashboard.git
+cd Reddit_To_Dashboard
 ```
 
-### 2. Configure Environment
+### 2. Install Dependencies
+
+**Backend:**
+
+**Option A: With Virtual Environment (Recommended)**
+```bash
+python -m venv venv
+```
+
+Activate the virtual environment:
+- **Windows (PowerShell):** `.\venv\Scripts\Activate.ps1`
+- **Linux/Mac:** `source venv/bin/activate`
+
+Then install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+
+**Frontend:**
+```bash
+cd frontend
+npm install
+```
+
+### 3. Configure Environment
 
 Create `.env` file in project root:
 
@@ -35,14 +55,17 @@ REDDIT_USER_AGENT=SocialListeningAgent/1.0
 OPENAI_API_KEY=your_key
 ```
 
-### 3. Run
+### 4. Run
 
+**Terminal 1 - Backend API:**
 ```bash
-# Terminal 1 - Backend API
 python api.py
+```
 
-# Terminal 2 - Frontend Dashboard
-cd frontend && npm run dev
+**Terminal 2 - Frontend Dashboard:**
+```bash
+cd frontend
+npm run dev
 ```
 
 - **API**: http://localhost:8080
