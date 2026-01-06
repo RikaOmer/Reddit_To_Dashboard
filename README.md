@@ -23,7 +23,7 @@ cd Reddit_To_Dashboard
 
 **Backend:**
 
-**Option A: With Virtual Environment (Recommended)**
+**Virtual Environment (Recommended)**
 ```bash
 python -m venv venv
 ```
