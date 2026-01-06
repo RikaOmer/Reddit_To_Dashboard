@@ -28,7 +28,7 @@ Reddit API + HN API → Data Ingestion → LLM Validation → Ranking → FastAP
 - **Model**: GPT-4o-mini (fast, cost-effective)
 - **Format**: JSON response format for structured output (ensure consistency)
 
-### Entity Disambiguation
+### Entity
 - **Taboola**: Unique name, low false-positive risk
 - **Realize**: Two-phase approach (capitalized + context keywords like "advertising", "platform")
 
