@@ -139,6 +139,10 @@ See [DESIGN.md](DESIGN.md) for:
 - **Rate limits**: Reddit API has usage limits; cached results reduce API calls
 - **English only**: Analysis optimized for English content
 
+![ezgif com-animated-gif-maker](https://github.com/user-attachments/assets/03aff5e5-181e-4a7a-b5f4-f70f8cf62dc7)
+
+
+
 ## Compliance
 
 This project only uses publicly available content and respects platform Terms of Service. No private data is accessed or stored.
