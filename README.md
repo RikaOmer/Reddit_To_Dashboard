@@ -57,12 +57,12 @@ OPENAI_API_KEY=your_key
 
 ### 4. Run
 
-**Terminal 1 - Backend API:**
+**Terminal 1 - Backend API: (Make sure you are still in venv)**
 ```bash
 python api.py
 ```
 
-**Terminal 2 - Frontend Dashboard:**
+**Terminal 2 - Frontend Dashboard: (Make sure you are still in venv)**
 ```bash
 cd frontend
 npm run dev
